@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  fullName     String
+  role         Role     @default(SELLER)
+  createdAt    DateTime @default(now())
+
+  activityLogs ActivityLog[]
+  sales        Sale[]
+  assignments  TaskAssignment[]
+  targets      Target[]
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  SELLER
+}
+
+model Task {
+  id                String     @id @default(cuid())
+  name              String
+  clientName        String
+  description       String?
+  status            TaskStatus @default(ACTIVE)
+  compensationModel Json
+  startDate         DateTime?
+  endDate           DateTime?
+  createdAt         DateTime   @default(now())
+
+  assignments  TaskAssignment[]
+  activityLogs ActivityLog[]
+  sales        Sale[]
+  targets      Target[]
+}
+
+enum TaskStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model TaskAssignment {
+  id        String   @id @default(cuid())
+  taskId    String
+  sellerId  String
+  createdAt DateTime @default(now())
+
+  task   Task @relation(fields: [taskId], references: [id])
+  seller User @relation(fields: [sellerId], references: [id])
+
+  @@unique([taskId, sellerId])
+}
+
+model PayPeriod {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+
+  targets Target[]
+}
+
+model Target {
+  id            String    @id @default(cuid())
+  payPeriodId   String
+  sellerId      String
+  taskId        String
+  unitTarget    Int?
+  revenueTarget Decimal?
+  createdAt     DateTime  @default(now())
+
+  payPeriod PayPeriod @relation(fields: [payPeriodId], references: [id])
+  seller    User      @relation(fields: [sellerId], references: [id])
+  task      Task      @relation(fields: [taskId], references: [id])
+}
+
+model ActivityLog {
+  id              String   @id @default(cuid())
+  sellerId        String
+  taskId          String
+  logDate         DateTime @default(now())
+  callsMade       Int      @default(0)
+  contactsReached Int      @default(0)
+  meetingsBooked  Int      @default(0)
+  meetingsHeld    Int      @default(0)
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  seller User @relation(fields: [sellerId], references: [id])
+  task   Task @relation(fields: [taskId], references: [id])
+}
+
+model Sale {
+  id               String           @id @default(cuid())
+  sellerId         String
+  taskId           String
+  saleDate         DateTime         @default(now())
+  compensationType CompensationType
+  units            Int              @default(1)
+  dealSize         Decimal?
+  packageName      String?
+  packagePrice     Decimal?
+  houseRevenue     Decimal
+  sellerNote       String?
+  status           SaleStatus       @default(PENDING)
+  createdAt        DateTime         @default(now())
+
+  seller User @relation(fields: [sellerId], references: [id])
+  task   Task @relation(fields: [taskId], references: [id])
+}
+
+enum CompensationType {
+  FIXED
+  PERCENTAGE
+  PACKAGE
+}
+
+enum SaleStatus {
+  PENDING
+  CONFIRMED
+  PAID
+}
